@@ -33,10 +33,11 @@ class Transform(Component):
 			position = Vector()
 		self.position = position
 class PhysicsObject(Component):
-	def __init__(self, mass=1, velocity=Vector(0,0), maxVelocity=1, decay=1):
+	def __init__(self, mass=1, velocity=None, maxVelocity=1, decay=1):
 		Component.__init__(self)
 		self.mass = mass
-		self.velocity = velocity
+		if velocity is None:
+			self.velocity = Vector(0,0)
 		self.decay = decay
 		self.maxVelocity = maxVelocity
 class Collider(Component):
@@ -98,7 +99,7 @@ class Script(Component):
 			uri = os.path.normpath(os.path.join(os.path.dirname(__file__), uri))
 		path, fname = os.path.split(uri)
 		mname, ext = os.path.splitext(fname)
-		print(uri)
+		print("URI: " + uri)
 		if os.path.exists(os.path.join(path,mname)+'.pyc'):
 			try:
 				return imp.load_compiled(mname, uri)
@@ -108,7 +109,7 @@ class Script(Component):
 			try:
 				return imp.load_source(mname, uri)
 			except Exception as e:
-				print(e)
+				print("ERROR: " + str(e))
 				pass
 		print(mod)
 		return mod
@@ -130,6 +131,12 @@ class GameObject():
 					return
 			component.masterObject = self
 			self.components.append(component)
+			if issubclass(type(component), Script):
+				try:
+					component.Start()
+				except Exception as e:
+					print(e)
+					pass
 		else:
 			raise TypeError("Component must derive from 'Component' class")
 	def RemoveComponent(self, comp_type):
@@ -146,7 +153,7 @@ class Game():
 	gameObjects = []
 	
 	# 'Constants'
-	FPS = 1.5
+	FPS = 5
 	GRAVITY = 1
 	MS_PER_FRAME=None
 	inputs = [] # (Keycode, Callback)
@@ -189,7 +196,7 @@ class Game():
 			raise TypeError("You can only add objects of the 'GameObject' class may be added") 
 		self.gameObjects.append(gameObject)
 	def DeleteObject(self, gameObject):
-		gameObjects.remove(gameObject)
+		self.gameObjects.remove(gameObject)
 	def render(self):
 		activePixels = []
 		for renderObj in self.FindObjectsOfType(SpriteRenderer):
@@ -221,7 +228,6 @@ class Game():
 				try:
 					scriptObject.Update()
 				except Exception as e:
-					print(e)
 					pass
 	def AddInputCallback(self, keycode, callback):
 		self.inputs.append((keycode, callback))
@@ -237,11 +243,9 @@ class Game():
 					return col
 	def physics(self):
 		for physicsObj in self.FindObjectsOfType(PhysicsObject):
+			#print(physicsObj.velocity.y)
 			if physicsObj.enabled:	
-				if physicsObj.velocity.y + self.GRAVITY > physicsObj.maxVelocity:
-					physicsObj.velocity.y = physicsObj.maxVelocity
-				else:
-					physicsObj.velocity.y += self.GRAVITY
+				physicsObj.velocity.y += self.GRAVITY
 				if physicsObj.masterObject.GetComponent(Collider) is not None:
 					col = physicsObj.masterObject.GetComponent(Collider)
 					for point in col.points:
@@ -254,21 +258,13 @@ class Game():
 								for script in self.FindScripts():
 									try:
 										script.OnCollision(colat)
-									except:
+									except Exception as e:
 										pass
+								physicsObj.veloicty = Vector(0,0)
 								return
 				physicsObj.masterObject.GetComponent(Transform).position.x += physicsObj.velocity.x
 				physicsObj.masterObject.GetComponent(Transform).position.y += physicsObj.velocity.y
-				
-				if physicsObj.velocity.x - physicsObj.decay > 0:
-					physicsObj.velocity.x -= physicsObj.decay
-				if physicsObj.velocity.y - physicsObj.decay > 0:
-					physicsObj.velocity.y -= physicsObj.decay
 					
-				if physicsObj.velocity.x > physicsObj.maxVelocity:
-					physicsObj.velocity.x = physicsObj.maxVelocity
-				if physicsObj.velocity.y > physicsObj.maxVelocity:
-					physicsObj.velocity.y = physicsObj.maxVelocity
 	def events(self):
 		for evt in event.get():
 			if evt.type == KEYDOWN:
@@ -281,6 +277,7 @@ class Game():
 		init()
 		display.set_mode((100,100))
 		
+		print(self.gameObjects[1].name)
 		while True:
 			display.flip()
 			start = datetime.datetime.now()
