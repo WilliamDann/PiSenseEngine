@@ -232,7 +232,7 @@ class Game():
 	def AddInputCallback(self, keycode, callback):
 		self.inputs.append((keycode, callback))
 	def RemoveInputCallback(self, keycode, callback):
-		self.inputs.remove(keycode, callback)
+		self.inputs.remove((keycode, callback))
 	def GetColliderAt(self, position):
 		x = position.x
 		y = position.y
